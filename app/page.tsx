@@ -70,10 +70,10 @@ function AppHeader({ view, setView, onRequestAdmin }: { view: string; setView: (
 function AdminView() {
   const [session, setSession] = useState<any>(null);
   const [criteria, setCriteria] = useState<any[]>([]);
-  const [startups, setStartups] = useState<any[]>([]);
+  const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [newCriterion, setNewCriterion] = useState({ name: "", weight: "" });
-  const [newStartup, setNewStartup] = useState({ name: "" });
+  const [newProject, setNewProject] = useState({ name: "" });
 
   const totalWeight = criteria.reduce((sum, c) => sum + parseFloat(c.weight || 0), 0);
 
@@ -83,9 +83,9 @@ function AdminView() {
       const s = sessions[0]; setSession(s);
       const [c, st] = await Promise.all([
         db("criteria", { select: "*", filter: `session_id=eq.${s.id}`, order: "order_index.asc" }),
-        db("startups", { select: "*", filter: `session_id=eq.${s.id}`, order: "order_index.asc" }),
+        db("projects", { select: "*", filter: `session_id=eq.${s.id}`, order: "order_index.asc" }),
       ]);
-      setCriteria(c); setStartups(st);
+      setCriteria(c); setProjects(st);
     }
     setLoading(false);
   }, []);
@@ -103,14 +103,14 @@ function AdminView() {
     loadData();
   }
 
-  async function handleAddStartup() {
-    if (!newStartup.name) return;
-    await db("startups", { method: "POST", body: { session_id: session.id, name: newStartup.name, order_index: startups.length } });
-    loadData(); setNewStartup({ name: "" });
+  async function handleAddProject() {
+    if (!newProject.name) return;
+    await db("projects", { method: "POST", body: { session_id: session.id, name: newProject.name, order_index: projects.length } });
+    loadData(); setNewProject({ name: "" });
   }
 
-  async function handleDeleteStartup(id: string) {
-    await db(`startups?id=eq.${id}`, { method: "DELETE" });
+  async function handleDeleteProject(id: string) {
+    await db(`projects?id=eq.${id}`, { method: "DELETE" });
     loadData();
   }
 
@@ -148,18 +148,18 @@ function AdminView() {
             )}
           </div>
           <div className="border-2 border-black p-6">
-            <h3 className="text-sm uppercase tracking-widest mb-6">02. Liste des startups</h3>
+            <h3 className="text-sm uppercase tracking-widest mb-6">02. Liste des projets</h3>
             <div className="grid gap-2 mb-6">
-              {startups.map((s,i) => (
+              {projects.map((s,i) => (
                 <div key={s.id} className="flex justify-between items-center p-3 border-2 border-black">
                   <span>{i+1}. {s.name}</span>
-                  <button onClick={() => handleDeleteStartup(s.id)} className="text-red-600 text-xl px-2">×</button>
+                  <button onClick={() => handleDeleteProject(s.id)} className="text-red-600 text-xl px-2">×</button>
                 </div>
               ))}
             </div>
             <div className="flex gap-2">
-              <input value={newStartup.name} onChange={(e)=>setNewStartup({name:e.target.value})} placeholder="Nom équipe" className="flex-1 border-2 border-black p-3 text-sm outline-none"/>
-              <button onClick={handleAddStartup} className="bg-black text-white px-6 font-black uppercase text-xs">Ajouter</button>
+              <input value={newProject.name} onChange={(e)=>setNewProject({name:e.target.value})} placeholder="Nom équipe" className="flex-1 border-2 border-black p-3 text-sm outline-none"/>
+              <button onClick={handleAddProject} className="bg-black text-white px-6 font-black uppercase text-xs">Ajouter</button>
             </div>
           </div>
         </div>
@@ -175,9 +175,9 @@ function JurorView() {
   const [step, setStep] = useState("ident");
   const [session, setSession] = useState<any>(null);
   const [criteria, setCriteria] = useState<any[]>([]);
-  const [startups, setStartups] = useState<any[]>([]);
+  const [projects, setProjects] = useState<any[]>([]);
   const [jurorName, setJurorName] = useState("");
-  const [startupId, setStartupId] = useState<string | null>(null);
+  const [projectId, setProjectId] = useState<string | null>(null);
   const [scores, setScores] = useState<Record<string, number>>({});
 
   useEffect(() => {
@@ -187,16 +187,16 @@ function JurorView() {
         setSession(s[0]);
         const [c, st] = await Promise.all([
           db("criteria", { select: "*", filter: `session_id=eq.${s[0].id}`, order: "order_index.asc" }),
-          db("startups", { select: "*", filter: `session_id=eq.${s[0].id}`, order: "order_index.asc" }),
+          db("projects", { select: "*", filter: `session_id=eq.${s[0].id}`, order: "order_index.asc" }),
         ]);
-        setCriteria(c); setStartups(st);
+        setCriteria(c); setProjects(st);
       }
     })();
   }, []);
 
   async function handleSubmit() {
-    const rows = criteria.map(c => ({ session_id: session.id, startup_id: startupId, criteria_id: c.id, juror_name: jurorName.trim(), score: scores[c.id] || 5 }));
-    await db("votes", { method: "POST", body: rows, upsert: true });
+    const rows = criteria.map(c => ({ session_id: session.id, project_id: projectId, criteria_id: c.id, juror_name: jurorName.trim(), score: scores[c.id] || 5 }));
+    await db("scores", { method: "POST", body: rows, upsert: true });
     setStep("confirm");
   }
 
@@ -212,18 +212,18 @@ function JurorView() {
             <input value={jurorName} onChange={(e)=>setJurorName(e.target.value)} placeholder="Nom Prénom" className="w-full border-4 border-black p-4 outline-none bg-white"/>
           </div>
           <div className="space-y-4">
-            <label className="text-xs uppercase">2. Startup à noter</label>
-            <select value={startupId || ""} onChange={(e)=>setStartupId(e.target.value)} className="w-full border-4 border-black p-4 outline-none bg-white appearance-none">
+            <label className="text-xs uppercase">2. Projet à noter</label>
+            <select value={projectId || ""} onChange={(e)=>setProjectId(e.target.value)} className="w-full border-4 border-black p-4 outline-none bg-white appearance-none">
               <option value="">-- SÉLECTIONNEZ --</option>
-              {startups.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              {projects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </div>
-          <button disabled={!jurorName || !startupId} onClick={()=>setStep("score")} className="text-white p-5 text-lg border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]" style={{backgroundColor:ORANGE}}>NOTER L'ÉQUIPE →</button>
+          <button disabled={!jurorName || !projectId} onClick={()=>setStep("score")} className="text-white p-5 text-lg border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]" style={{backgroundColor:ORANGE}}>NOTER L'ÉQUIPE →</button>
         </div>
       )}
       {step === "score" && (
         <div className="flex flex-col gap-8">
-          <h2 className="text-2xl p-4 bg-black text-white">{startups.find(s=>s.id===startupId)?.name}</h2>
+          <h2 className="text-2xl p-4 bg-black text-white">{projects.find(s=>s.id===projectId)?.name}</h2>
           {criteria.map(c => (
             <div key={c.id} className="border-4 border-black p-4 space-y-4">
               <div className="flex justify-between items-center">
@@ -240,7 +240,7 @@ function JurorView() {
         <div className="text-center py-20 space-y-8">
           <div className="text-8xl">🏆</div>
           <h2 className="text-3xl">VOTE BIEN REÇU</h2>
-          <button onClick={()=>{setStep("ident"); setStartupId(null); setScores({});}} className="text-white p-4 border-4 border-black bg-black">RETOUR À LA LISTE</button>
+          <button onClick={()=>{setStep("ident"); setProjectId(null); setScores({});}} className="text-white p-4 border-4 border-black bg-black">RETOUR À LA LISTE</button>
         </div>
       )}
     </div>
@@ -259,7 +259,7 @@ function DashboardView() {
 
   const fetchRankings = useCallback(async (sessionId: string) => {
     const [votes, criteriaList] = await Promise.all([
-      db("votes", { select: "startup_id,score,juror_name,criteria(name,weight),startups(name)", filter: `session_id=eq.${sessionId}` }),
+      db("scores", { select: "project_id,score,juror_name,criteria(name,weight),projects(name)", filter: `session_id=eq.${sessionId}` }),
       db("criteria", { select: "name", filter: `session_id=eq.${sessionId}`, order: "order_index.asc" })
     ]);
 
@@ -270,33 +270,32 @@ function DashboardView() {
     const detailedMap: Record<string, any> = {};
 
     votes.forEach((v: any) => {
-      const sid = v.startup_id;
+      const sid = v.project_id;
       const juror = v.juror_name;
       const key = `${juror}-${sid}`;
       const w = parseFloat(v.criteria?.weight ?? 1);
       const s = parseFloat(v.score);
 
-      if (!rankMap[sid]) rankMap[sid] = { name: v.startups?.name, weightedSum: 0, maxPossible: 0, voteCount: new Set() };
+      if (!rankMap[sid]) rankMap[sid] = { name: v.projects?.name, weightedSum: 0, maxPossible: 0, voteCount: new Set() };
       rankMap[sid].weightedSum += s * w;
       rankMap[sid].maxPossible += 10 * w;
       rankMap[sid].voteCount.add(juror);
 
-      if (!detailedMap[key]) detailedMap[key] = { juror, startup: v.startups?.name, scores: {}, totalWeighted: 0, maxPossible: 0 };
+      if (!detailedMap[key]) detailedMap[key] = { juror, startup: v.projects?.name, scores: {}, totalWeighted: 0, maxPossible: 0 };
       detailedMap[key].scores[v.criteria?.name] = s;
       detailedMap[key].totalWeighted += s * w;
       detailedMap[key].maxPossible += 10 * w;
     });
 
-    // CALCUL SANS ARRONDIS (toFixed(3))
-    setRankings(Object.values(rankMap).map(r => ({ 
-      ...r, 
-      voteCount: r.voteCount.size, 
-      score: r.maxPossible > 0 ? (r.weightedSum / r.maxPossible) * 100 : 0 
+    setRankings(Object.values(rankMap).map(r => ({
+      ...r,
+      voteCount: r.voteCount.size,
+      score: r.maxPossible > 0 ? (r.weightedSum / r.maxPossible) * 100 : 0
     })).sort((a,b) => b.score - a.score));
 
-    setDetailedVotes(Object.values(detailedMap).map(d => ({ 
-      ...d, 
-      finalScore: d.maxPossible > 0 ? (d.totalWeighted / d.maxPossible) * 100 : 0 
+    setDetailedVotes(Object.values(detailedMap).map(d => ({
+      ...d,
+      finalScore: d.maxPossible > 0 ? (d.totalWeighted / d.maxPossible) * 100 : 0
     })));
     
     setLastUpdate(new Date());
